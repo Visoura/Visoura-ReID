@@ -1,6 +1,20 @@
 # VisouraReID
 VisouraReID: Modular Supervision for Person Re-Identification
 
+## 🚩 News & Timeline
+- **[2026-08-09]**: 🚀 Released the initial source code and published dataset / pretrained model checkpoints on [Hugging Face](https://huggingface.co/David-Magdy/VisouraReID).
+- **[Pending]**: ✍️ Paper writing in progress.
+- **[Pending]**: 📄 Paper publication and preprint release.
+
+## 📊 Progress & Roadmap
+
+| Milestone / Feature | Status | Date | Note |
+| :--- | :---: | :---: | :--- |
+| **Source Code Publishing** | ✅ Completed | 2026-08-09 | Initial release of codebase and fine-tuning/inference pipeline |
+| **Data & Model Weights Publishing** | ✅ Completed | 2026-08-09 | Checkpoints and training logs released on [Hugging Face](https://huggingface.co/David-Magdy/VisouraReID) |
+| **Paper Writing** | ⏳ In Progress | Pending | Manuscript preparation |
+| **Paper Publishing** | ⏳ Pending | Pending | ArXiv preprint & publication |
+
 ## Contributions
 ## Results
 ![VisouraReID](pics/sota_pic.png)
