@@ -12,6 +12,7 @@ from .center_loss import CenterLoss
 from .text_align_loss import InfoNCETextAlignLoss, CosineAlignLoss, TextCenterLoss
 from .dist_loss import build_dist_loss, build_distill_loss
 from .koleo_loss import KoLeoLoss
+from .uniformity_loss import NegUniformityLoss, VarianceLoss
 from .supcon_loss import SupervisedContrastiveLoss
 
 
@@ -36,6 +37,25 @@ def make_loss(cfg, num_classes):    # modified by gu
     if cfg.MODEL.USE_KOLEO_LOSS:
         koleo = KoLeoLoss()
         print("using KoLeo Loss")
+
+    if cfg.MODEL.USE_UNIFORMITY_LOSS:
+        uniformity = NegUniformityLoss(t=cfg.MODEL.UNIFORMITY_T)
+        print("using negative-only Uniformity Loss")
+    if cfg.MODEL.USE_VARIANCE_LOSS:
+        variance = VarianceLoss(gamma=cfg.MODEL.VARIANCE_GAMMA)
+        print("using Variance Loss")
+
+    def _extra_reg(feat, target, total, d):
+        vf = feat[0] if isinstance(feat, list) else feat
+        if cfg.MODEL.USE_UNIFORMITY_LOSS:
+            u = uniformity(vf, target)
+            total = total + cfg.MODEL.UNIFORMITY_LOSS_WEIGHT * u
+            d["uniformity_loss"] = u.detach().item()
+        if cfg.MODEL.USE_VARIANCE_LOSS:
+            v = variance(vf, target)
+            total = total + cfg.MODEL.VARIANCE_LOSS_WEIGHT * v
+            d["variance_loss"] = v.detach().item()
+        return total
 
     use_gram_anchor = cfg.MODEL.USE_GRAM_ANCHOR_LOSS
     if use_gram_anchor:
@@ -143,6 +163,7 @@ def make_loss(cfg, num_classes):    # modified by gu
                 k_loss = koleo(vf, target)
                 total += cfg.MODEL.KOLEO_LOSS_WEIGHT * k_loss
                 loss_dict["koleo_loss"] = k_loss.detach().item()
+            total = _extra_reg(feat, target, total, loss_dict)
 
             if use_gram_anchor and student_tokens is not None and teacher_tokens is not None:
                 gram_loss = gram_criterion(student_tokens, teacher_tokens)
@@ -209,6 +230,7 @@ def make_loss(cfg, num_classes):    # modified by gu
                 k_loss = koleo(vf, target)
                 total += cfg.MODEL.KOLEO_LOSS_WEIGHT * k_loss
                 metric_loss_dict["koleo_loss"] = k_loss.detach().item()
+            total = _extra_reg(feat, target, total, metric_loss_dict)
 
             if use_gram_anchor and student_tokens is not None and teacher_tokens is not None:
                 gram_loss = gram_criterion(student_tokens, teacher_tokens)

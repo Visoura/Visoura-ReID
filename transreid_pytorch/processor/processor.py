@@ -54,6 +54,24 @@ def do_train(cfg,
     use_proj_head = cfg.MODEL.TEXT_PROJ_HEAD
     warmup_epochs = cfg.MODEL.TEXT_PROJ_WARMUP_EPOCHS if use_proj_head else 0
 
+    def _grad_norm_metrics(m):
+        """Global and per-top-level-module L2 grad norms (call after unscale_)."""
+        per_mod = {}
+        for name, prm in m.named_parameters():
+            if prm.grad is None:
+                continue
+            key = name.replace('module.', '', 1).split('.')[0]
+            g = prm.grad.detach().float()
+            per_mod[key] = per_mod.get(key, 0.0) + g.pow(2).sum()
+        if not per_mod:
+            return {}
+        total = torch.sqrt(sum(per_mod.values()))
+        out = {"grad/norm_total": total.item(),
+               "grad/is_finite": float(torch.isfinite(total).item())}
+        for k, v in per_mod.items():
+            out[f"grad/norm_{k}"] = torch.sqrt(v).item()
+        return out
+
     def _get_raw_model(m):
         """Unwrap DDP if needed."""
         return m.module if hasattr(m, 'module') else m
@@ -153,6 +171,13 @@ def do_train(cfg,
 
             scaler.scale(loss).backward()
 
+            # ── Gradient-norm diagnostics (only on wandb log steps) ───
+            grad_metrics = {}
+            if use_wandb and (global_step + 1) % wandb_log_freq == 0:
+                scaler.unscale_(optimizer)   # true (unscaled) grads; step() won't unscale twice
+                grad_metrics = _grad_norm_metrics(model)
+                grad_metrics["grad/amp_loss_scale"] = scaler.get_scale()
+
             scaler.step(optimizer)
             scaler.update()
 
@@ -187,10 +212,13 @@ def do_train(cfg,
                     "train/lr": base_lr,
                     "train/epoch": epoch,
                 }
-                # Add individual loss components (only non-zero ones)
+                # Log every loss that is active. loss_dict only contains losses whose
+                # flag is on; text_align is present even when unused, so gate it.
                 for k, v in loss_dict.items():
-                    if v != 0.0:
-                        wandb_metrics[f"train/{k}"] = v
+                    if k == "text_align_loss" and not use_text:
+                        continue
+                    wandb_metrics[f"train/{k}"] = v
+                wandb_metrics.update(grad_metrics)
                 wandb.log(wandb_metrics, step=global_step)
 
             if cfg.MODEL.DIST_TRAIN:

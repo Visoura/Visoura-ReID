@@ -1,3 +1,5 @@
+import random
+import numpy as np
 import torch
 import torchvision.transforms as T
 from torch.utils.data import DataLoader
@@ -69,6 +71,19 @@ def val_collate_fn(batch):
         camids_batch = torch.tensor(camids, dtype=torch.int64)
         return torch.stack(imgs, dim=0), pids, camids, camids_batch, viewids, img_paths
 
+def _worker_init_fn(worker_id):
+    # torch seeds `random` and torch per worker; numpy is not seeded automatically
+    seed = torch.initial_seed() % 2 ** 32
+    np.random.seed(seed)
+    random.seed(seed)
+
+
+def _make_generator(cfg):
+    g = torch.Generator()
+    g.manual_seed(cfg.SOLVER.SEED)
+    return g
+
+
 def make_dataloader(cfg):
     train_transforms = T.Compose([
             T.Resize(cfg.INPUT.SIZE_TRAIN, interpolation=3),
@@ -131,18 +146,21 @@ def make_dataloader(cfg):
                 batch_sampler=batch_sampler,
                 collate_fn=collate_fn_train,
                 pin_memory=True,
+                worker_init_fn=_worker_init_fn, generator=_make_generator(cfg),
             )
         else:
             train_loader = DataLoader(
                 train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
                 sampler=RandomIdentitySampler(dataset.train, cfg.SOLVER.IMS_PER_BATCH, cfg.DATALOADER.NUM_INSTANCE),
-                num_workers=num_workers, collate_fn=collate_fn_train
+                num_workers=num_workers, collate_fn=collate_fn_train,
+                worker_init_fn=_worker_init_fn, generator=_make_generator(cfg),
             )
     elif cfg.DATALOADER.SAMPLER == 'softmax':
         print('using softmax sampler')
         train_loader = DataLoader(
             train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH, shuffle=True, num_workers=num_workers,
-            collate_fn=collate_fn_train
+            collate_fn=collate_fn_train,
+            worker_init_fn=_worker_init_fn, generator=_make_generator(cfg),
         )
     elif cfg.DATALOADER.SAMPLER in ['id_triplet', 'id']:
         print('using ID sampler')
@@ -150,6 +168,7 @@ def make_dataloader(cfg):
                 train_set, batch_size=cfg.SOLVER.IMS_PER_BATCH,
                 sampler=RandomIdentitySampler_IdUniform(dataset.train, cfg.DATALOADER.NUM_INSTANCE),
                 num_workers=num_workers, collate_fn=collate_fn_train, drop_last = True,
+                worker_init_fn=_worker_init_fn, generator=_make_generator(cfg),
         )
     else:
         print('unsupported sampler! expected softmax or triplet but got {}'.format(cfg.SAMPLER))

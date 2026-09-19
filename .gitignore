@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Experiment outputs: weights, logs, tracking
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+log/
+logs/
+output/
+outputs/
+runs/
+wandb/
+lightning_logs/
+tensorboard/
+*.log
+nohup.out
+
+# Datasets (keep Market-1501-Text annotations, which are tracked)
+Market-1501/
+market1501/
+MSMT17*/
+DukeMTMC*/
+data/
+datasets_raw/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+.env
+*.key
+*.pyc

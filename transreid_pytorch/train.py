@@ -13,14 +13,22 @@ import argparse
 from config import cfg
 import torch.distributed as dist
 
-def set_seed(seed):
+def set_seed(seed, deterministic=False):
+    os.environ['PYTHONHASHSEED'] = str(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+    if deterministic:
+        # must be set before the first cuBLAS call
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        torch.backends.cudnn.benchmark = False
+        # warn_only: ops without a deterministic kernel warn instead of crashing
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    else:
+        torch.backends.cudnn.benchmark = True
 
 if __name__ == '__main__':
 
@@ -39,7 +47,7 @@ if __name__ == '__main__':
     cfg.merge_from_list(args.opts)
     
     cfg.freeze()
-    set_seed(cfg.SOLVER.SEED)
+    set_seed(cfg.SOLVER.SEED, cfg.SOLVER.DETERMINISTIC)
 
     if cfg.MODEL.DIST_TRAIN:
         torch.cuda.set_device(args.local_rank)

@@ -73,6 +73,16 @@ _C.MODEL.GUIDED_SCALE_RATIO     = 1.1    # additive boost ratio for CLS→human-
 _C.MODEL.USE_KOLEO_LOSS    = False
 _C.MODEL.KOLEO_LOSS_WEIGHT = 0.1
 
+# ── Negative-only Uniformity Loss ─────────────────────────────────
+_C.MODEL.USE_UNIFORMITY_LOSS    = False
+_C.MODEL.UNIFORMITY_LOSS_WEIGHT = 0.1
+_C.MODEL.UNIFORMITY_T           = 2.0
+
+# ── VICReg-style Variance Loss ────────────────────────────────────
+_C.MODEL.USE_VARIANCE_LOSS    = False
+_C.MODEL.VARIANCE_LOSS_WEIGHT = 0.1
+_C.MODEL.VARIANCE_GAMMA       = 1.0
+
 # ── Supervised Contrastive Loss ───────────────────────────────────
 _C.MODEL.USE_SUPCON_LOSS    = False
 _C.MODEL.SUPCON_TEMPERATURE = 0.05
@@ -176,6 +186,7 @@ _C.SOLVER.LARGE_FC_LR = False
 _C.SOLVER.BIAS_LR_FACTOR = 1
 # Factor of learning bias
 _C.SOLVER.SEED = 1234
+_C.SOLVER.DETERMINISTIC = False   # bit-reproducible runs (disables cudnn.benchmark, slower)
 # Momentum
 _C.SOLVER.MOMENTUM = 0.9
 # Margin of triplet loss
