@@ -11,7 +11,7 @@ MODEL:
   STRIDE_SIZE: [16, 16]
   TEXT_EMB_PATH: ''   # default points at scripts/qwen_8B_v1.pt, which would switch the text loss on
   USE_VARIANCE_LOSS: True
-  VARIANCE_LOSS_WEIGHT: 0.4
+  VARIANCE_LOSS_WEIGHT: 1
   VARIANCE_GAMMA: 1.0
 
 INPUT:
