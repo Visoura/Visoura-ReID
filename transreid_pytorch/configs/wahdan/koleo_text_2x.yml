@@ -24,12 +24,6 @@ MODEL:
   TEXT_PROJ_WARMUP_EPOCHS: 10
   USE_KOLEO_LOSS: True
   KOLEO_LOSS_WEIGHT: 0.4
-  USE_UNIFORMITY_LOSS: True
-  UNIFORMITY_LOSS_WEIGHT: 1.0
-  UNIFORMITY_T: 2.0
-  USE_VARIANCE_LOSS: True
-  VARIANCE_LOSS_WEIGHT: 1.0
-  VARIANCE_GAMMA: 1.0
 
 INPUT:
   SIZE_TRAIN: [256, 128]
@@ -76,10 +70,10 @@ TEST:
 WANDB:
   ENABLE: True
   PROJECT: 'ReID-Loss-Ablation'
-  RUN_NAME: 'koleo_text_uniformity_variance_2x'
+  RUN_NAME: 'koleo_text_2x'
   ENTITY: ''
-  TAGS: ('vit_small', 'market1501', 'koleo_text_uniformity_variance_2x')
-  NOTES: 'Baseline 2x + KoLeo + text + uniformity + variance'
+  TAGS: ('vit_small', 'market1501', 'koleo_text_2x')
+  NOTES: 'Baseline 2x + KoLeo + text'
   LOG_FREQ: 10
 
-OUTPUT_DIR: 'log/transreid/market/koleo_text_uniformity_variance_2x'
+OUTPUT_DIR: 'log/transreid/market/koleo_text_2x'

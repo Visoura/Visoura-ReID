@@ -9,14 +9,19 @@ MODEL:
   DEVICE_ID: ('0')
   TRANSFORMER_TYPE: 'vit_small_patch16_224_TransReID'
   STRIDE_SIZE: [16, 16]
-  # Text alignment (dist-loss mode, same settings as the earlier cross-modal config)
+  # Text alignment (dist-loss mode) - identical to the earlier cross-modal run
   TEXT_EMB_PATH: 'scripts/qwen_8B_v1.pt'
   TEXT_EMB_BY_PID: True
   TEXT_EMB_DIM: 768
   TEXT_PROJ_HEAD: False
-  TEXT_LOSS_TYPE: 'l1'
+  TEXT_LOSS_TYPE: 'kl'
   TEXT_LOSS_HYPR: 0.07
-  TEXT_LOSS_WEIGHT: 0.5
+  TEXT_LOSS_WEIGHT: 0.4
+  # projector-mode settings (unused while TEXT_PROJ_HEAD is False, kept for parity)
+  TEXT_ALIGN_LOSS: 'text_center'
+  TEXT_ALIGN_WEIGHT: 0.3
+  TEXT_ALIGN_TEMPERATURE: 0.1
+  TEXT_PROJ_WARMUP_EPOCHS: 10
   USE_KOLEO_LOSS: True
   KOLEO_LOSS_WEIGHT: 0.4
   USE_UNIFORMITY_LOSS: True
