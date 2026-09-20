@@ -9,10 +9,22 @@ MODEL:
   DEVICE_ID: ('0')
   TRANSFORMER_TYPE: 'vit_small_patch16_224_TransReID'
   STRIDE_SIZE: [16, 16]
-  TEXT_EMB_PATH: ''   # default points at scripts/qwen_8B_v1.pt, which would switch the text loss on
+  # Text alignment (dist-loss mode, same settings as the earlier cross-modal config)
+  TEXT_EMB_PATH: 'scripts/qwen_8B_v1.pt'
+  TEXT_EMB_BY_PID: True
+  TEXT_EMB_DIM: 768
+  TEXT_PROJ_HEAD: False
+  TEXT_LOSS_TYPE: 'l1'
+  TEXT_LOSS_HYPR: 0.07
+  TEXT_LOSS_WEIGHT: 0.5
+  USE_KOLEO_LOSS: True
+  KOLEO_LOSS_WEIGHT: 0.4
   USE_UNIFORMITY_LOSS: True
-  UNIFORMITY_LOSS_WEIGHT: 10.0
+  UNIFORMITY_LOSS_WEIGHT: 1.0
   UNIFORMITY_T: 2.0
+  USE_VARIANCE_LOSS: True
+  VARIANCE_LOSS_WEIGHT: 1.0
+  VARIANCE_GAMMA: 1.0
 
 INPUT:
   SIZE_TRAIN: [256, 128]
@@ -59,10 +71,10 @@ TEST:
 WANDB:
   ENABLE: True
   PROJECT: 'ReID-Loss-Ablation'
-  RUN_NAME: 'uniformity_2x'
+  RUN_NAME: 'koleo_text_uniformity_variance_2x'
   ENTITY: ''
-  TAGS: ('vit_small', 'market1501', 'uniformity_2x')
-  NOTES: 'Baseline 2x + negative-only uniformity'
+  TAGS: ('vit_small', 'market1501', 'koleo_text_uniformity_variance_2x')
+  NOTES: 'Baseline 2x + KoLeo + text + uniformity + variance'
   LOG_FREQ: 10
 
-OUTPUT_DIR: 'log/transreid/market/uniformity_2x'
+OUTPUT_DIR: 'log/transreid/market/koleo_text_uniformity_variance_2x'
