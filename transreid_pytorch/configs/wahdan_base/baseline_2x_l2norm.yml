@@ -1,0 +1,66 @@
+MODEL:
+  PRETRAIN_PATH: '/kaggle/working/weights/vit_base_pretrained.pth'
+  PRETRAIN_HW_RATIO: 2
+  METRIC_LOSS_TYPE: 'triplet'
+  IF_LABELSMOOTH: 'off'
+  IF_WITH_CENTER: 'no'
+  NAME: 'transformer'
+  NO_MARGIN: True
+  DEVICE_ID: ('0')
+  TRANSFORMER_TYPE: 'vit_base_patch16_224_TransReID'
+  STRIDE_SIZE: [16, 16]
+  TEXT_EMB_PATH: ''   # default points at scripts/qwen_8B_v1.pt, which would switch the text loss on
+
+INPUT:
+  SIZE_TRAIN: [256, 128]
+  SIZE_TEST: [256, 128]
+  PROB: 0.5 # random horizontal flip
+  RE_PROB: 0.5 # random erasing
+  PADDING: 10
+  PIXEL_MEAN: [0.5, 0.5, 0.5]
+  PIXEL_STD: [0.5, 0.5, 0.5]
+
+DATASETS:
+  NAMES: ('market1501')
+  ROOT_DIR: ('/kaggle/input/datasets/pengcw1/market-1501')
+
+DATALOADER:
+  SAMPLER: 'softmax_triplet'
+  NUM_INSTANCE: 4
+  NUM_WORKERS: 8
+
+SOLVER:
+  OPTIMIZER_NAME: 'SGD'
+  MAX_EPOCHS: 240        # 2x baseline (120)
+  BASE_LR: 0.0004
+  WARMUP_EPOCHS: 20
+  IMS_PER_BATCH: 128     # 2x baseline (64)
+  WARMUP_METHOD: 'cosine'
+  LARGE_FC_LR: False
+  CHECKPOINT_PERIOD: 120
+  LOG_PERIOD: 20
+  EVAL_PERIOD: 20
+  WEIGHT_DECAY:  1e-4
+  WEIGHT_DECAY_BIAS: 1e-4
+  BIAS_LR_FACTOR: 2
+  DETERMINISTIC: True
+  TRP_L2: True
+
+TEST:
+  EVAL: True
+  IMS_PER_BATCH: 256
+  RE_RANKING: False
+  WEIGHT: ''
+  NECK_FEAT: 'before'
+  FEAT_NORM: 'yes'
+
+WANDB:
+  ENABLE: True
+  PROJECT: 'ReID-Loss-Ablation'
+  RUN_NAME: 'baseline_2x_l2norm_base'
+  ENTITY: ''
+  TAGS: ('vit_base', 'market1501', 'baseline_2x_l2norm')
+  NOTES: 'Baseline 2x + L2-normalised features in triplet'
+  LOG_FREQ: 10
+
+OUTPUT_DIR: 'log/transreid/market/base/baseline_2x_l2norm'
