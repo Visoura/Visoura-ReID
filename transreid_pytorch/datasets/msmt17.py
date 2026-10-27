@@ -21,14 +21,14 @@ class MSMT17(BaseImageDataset):
     # images: 32621 (train) + 11659 (query) + 82161 (gallery)
     # cameras: 15
     """
-    dataset_dir = 'MSMT17'
+    dataset_dir = 'MSMT17_V2'
 
     def __init__(self, root='', verbose=True, pid_begin=0, **kwargs):
         super(MSMT17, self).__init__()
         self.pid_begin = pid_begin
         self.dataset_dir = osp.join(root, self.dataset_dir)
-        self.train_dir = osp.join(self.dataset_dir, 'train')
-        self.test_dir = osp.join(self.dataset_dir, 'test')
+        self.train_dir = osp.join(self.dataset_dir, 'mask_train_v2')
+        self.test_dir = osp.join(self.dataset_dir, 'mask_test_v2')
         self.list_train_path = osp.join(self.dataset_dir, 'list_train.txt')
         self.list_val_path = osp.join(self.dataset_dir, 'list_val.txt')
         self.list_query_path = osp.join(self.dataset_dir, 'list_query.txt')
@@ -66,14 +66,20 @@ class MSMT17(BaseImageDataset):
         dataset = []
         pid_container = set()
         cam_container = set()
+        skipped = 0
         for img_idx, img_info in enumerate(lines):
             img_path, pid = img_info.split(' ')
             pid = int(pid)  # no need to relabel
             camid = int(img_path.split('_')[2])
             img_path = osp.join(dir_path, img_path)
+            if not osp.isfile(img_path):
+                skipped += 1
+                continue
             dataset.append((img_path,  self.pid_begin +pid, camid-1, 1))
             pid_container.add(pid)
             cam_container.add(camid)
+        if skipped:
+            print(f'warning: skipped {skipped} missing images in {dir_path}')
         print(cam_container, 'cam_container')
         # check if pid starts from 0 and increments with 1
         for idx, pid in enumerate(pid_container):

@@ -103,19 +103,18 @@ class SimilarityMatrixKLLoss(nn.Module):
                 text_embeddings: torch.Tensor) -> torch.Tensor:
         S_v, S_t, mask = _similarity_matrices(vision_embeddings, text_embeddings)
 
-        # Mask out diagonal by setting it to -inf before softmax
         B = S_v.size(0)
-        neg_inf = torch.finfo(S_v.dtype).min
-        diag_mask = torch.eye(B, dtype=torch.bool, device=S_v.device)
 
-        S_v_masked = S_v.masked_fill(diag_mask, neg_inf) / self.tau
-        S_t_masked = S_t.masked_fill(diag_mask, neg_inf) / self.tau
+        # Remove diagonal entries completely (masked_fill with finfo.min / tau
+        # overflows to -inf and makes kl_div produce 0*(-inf) = NaN)
+        S_v = S_v[mask].view(B, B - 1)
+        S_t = S_t[mask].view(B, B - 1)
 
-        log_q = F.log_softmax(S_v_masked, dim=1)   # vision  (log-input)
-        p     = F.softmax(S_t_masked, dim=1)        # text    (target)
+        log_q = F.log_softmax(S_v / self.tau, dim=1)
+        p = F.softmax(S_t / self.tau, dim=1)
 
-        # F.kl_div expects (log-input, target)
-        loss = F.kl_div(log_q, p, reduction='batchmean')
+        loss = F.kl_div(log_q, p, reduction="batchmean")
+
         return loss
 
 
