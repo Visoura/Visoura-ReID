@@ -66,20 +66,14 @@ class MSMT17(BaseImageDataset):
         dataset = []
         pid_container = set()
         cam_container = set()
-        skipped = 0
         for img_idx, img_info in enumerate(lines):
             img_path, pid = img_info.split(' ')
             pid = int(pid)  # no need to relabel
             camid = int(img_path.split('_')[2])
             img_path = osp.join(dir_path, img_path)
-            if not osp.isfile(img_path):
-                skipped += 1
-                continue
             dataset.append((img_path,  self.pid_begin +pid, camid-1, 1))
             pid_container.add(pid)
             cam_container.add(camid)
-        if skipped:
-            print(f'warning: skipped {skipped} missing images in {dir_path}')
         print(cam_container, 'cam_container')
         # check if pid starts from 0 and increments with 1
         for idx, pid in enumerate(pid_container):
