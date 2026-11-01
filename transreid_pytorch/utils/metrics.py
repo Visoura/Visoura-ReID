@@ -9,7 +9,7 @@ def euclidean_distance(qf, gf):
     n = gf.shape[0]
     dist_mat = torch.pow(qf, 2).sum(dim=1, keepdim=True).expand(m, n) + \
                torch.pow(gf, 2).sum(dim=1, keepdim=True).expand(n, m).t()
-    dist_mat.addmm_(1, -2, qf, gf.t())
+    dist_mat.addmm_(qf, gf.t(), beta=1, alpha=-2)
     return dist_mat.cpu().numpy()
 
 def cosine_similarity(qf, gf):
@@ -36,10 +36,14 @@ def eval_func(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=50):
     if num_g < max_rank:
         max_rank = num_g
         print("Note: number of gallery samples is quite small, got {}".format(num_g))
-    indices = np.argsort(distmat, axis=1)
+    # argsort in query chunks with int32 indices to keep peak RAM low on large
+    # galleries (e.g. MSMT17: full int64 argsort + matches matrix -> OOM)
+    indices = np.empty((num_q, num_g), dtype=np.int32)
+    chunk = 1000
+    for s in range(0, num_q, chunk):
+        indices[s:s + chunk] = np.argsort(distmat[s:s + chunk], axis=1)
     #  0 2 1 3
     #  1 2 3 0
-    matches = (g_pids[indices] == q_pids[:, np.newaxis]).astype(np.int32)
     # compute cmc curve for each query
     all_cmc = []
     all_AP = []
@@ -56,7 +60,7 @@ def eval_func(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=50):
 
         # compute cmc curve
         # binary vector, positions with value 1 are correct matches
-        orig_cmc = matches[q_idx][keep]
+        orig_cmc = (g_pids[order] == q_pid).astype(np.int32)[keep]
         if not np.any(orig_cmc):
             # this condition is true when query identity does not appear in gallery
             continue
