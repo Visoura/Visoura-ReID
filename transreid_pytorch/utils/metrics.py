@@ -90,6 +90,58 @@ def eval_func(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=50):
     return all_cmc, mAP, all_AP, indices
 
 
+def eval_func_chunked(qf, gf, q_pids, g_pids, q_camids, g_camids, max_rank=50, chunk=256):
+    """Same metric as eval_func, but computed per query chunk (on GPU if available)
+    without ever materializing the full query x gallery distance matrix in host RAM.
+    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    qf, gf = qf.to(device).float(), gf.to(device).float()
+    q_pids, g_pids = torch.as_tensor(q_pids, device=device), torch.as_tensor(g_pids, device=device)
+    q_camids, g_camids = torch.as_tensor(q_camids, device=device), torch.as_tensor(g_camids, device=device)
+    num_g = gf.shape[0]
+    if num_g < max_rank:
+        max_rank = num_g
+        print("Note: number of gallery samples is quite small, got {}".format(num_g))
+    g_sq = torch.pow(gf, 2).sum(dim=1)
+    ranks = torch.arange(1, max_rank + 1, device=device)
+
+    cmc_sum = torch.zeros(max_rank, device=device, dtype=torch.float64)
+    all_AP = []
+    for s in range(0, qf.shape[0], chunk):
+        q = qf[s:s + chunk]
+        dist = torch.pow(q, 2).sum(dim=1, keepdim=True) + g_sq.unsqueeze(0)
+        dist.addmm_(q, gf.t(), beta=1, alpha=-2)
+        order = dist.argsort(dim=1)
+        del dist
+
+        qp, qc = q_pids[s:s + chunk, None], q_camids[s:s + chunk, None]
+        gp = g_pids[order]
+        match = gp == qp
+        # remove gallery samples that have the same pid and camid with query
+        keep = ~(match & (g_camids[order] == qc))
+        del order, gp
+        hits = (match & keep).float()
+        # 1-based rank among kept gallery samples (clamped: removed leading entries would give 0/0)
+        pos = keep.float().cumsum(dim=1).clamp(min=1)
+        num_rel = hits.sum(dim=1)
+        valid = num_rel > 0
+
+        # AP = mean over correct matches of precision at that rank
+        ap = (hits * hits.cumsum(dim=1) / pos).sum(dim=1) / num_rel.clamp(min=1)
+        # rank of first correct match -> cmc[k] = 1 for k >= that rank
+        first = pos.gather(1, hits.argmax(dim=1, keepdim=True))
+        cmc = (ranks.unsqueeze(0) >= first).double()
+
+        cmc_sum += cmc[valid].sum(dim=0)
+        all_AP.extend(ap[valid].tolist())
+
+    num_valid_q = len(all_AP)
+    assert num_valid_q > 0, "Error: all query identities do not appear in gallery"
+    all_cmc = (cmc_sum / num_valid_q).float().cpu().numpy()
+    mAP = np.mean(all_AP)
+    return all_cmc, mAP, all_AP
+
+
 class R1_mAP_eval():
     def __init__(self, num_query, max_rank=50, feat_norm=True, reranking=False):
         super(R1_mAP_eval, self).__init__()
@@ -110,8 +162,23 @@ class R1_mAP_eval():
         self.camids.extend(np.asarray(camid))
 
     def compute(self):  # called after each epoch
-        cmc, mAP, distmat, _, _, qf, gf, all_AP, indices = self._compute()
-        return cmc, mAP, distmat, self.pids, self.camids, qf, gf
+        if self.reranking:
+            cmc, mAP, distmat, _, _, qf, gf, all_AP, indices = self._compute()
+            return cmc, mAP, distmat, self.pids, self.camids, qf, gf
+        # memory-light path: no full distmat (returned as None)
+        feats = torch.cat(self.feats, dim=0)
+        if self.feat_norm:
+            print("The test feature is normalized")
+            feats = torch.nn.functional.normalize(feats, dim=1, p=2)  # along channel
+        qf = feats[:self.num_query]
+        gf = feats[self.num_query:]
+        print('=> Computing CMC/mAP with chunked euclidean_distance')
+        cmc, mAP, _ = eval_func_chunked(
+            qf, gf,
+            np.asarray(self.pids[:self.num_query]), np.asarray(self.pids[self.num_query:]),
+            np.asarray(self.camids[:self.num_query]), np.asarray(self.camids[self.num_query:]),
+            max_rank=self.max_rank)
+        return cmc, mAP, None, self.pids, self.camids, qf, gf
 
     def _compute(self):  # called after each epoch
         feats = torch.cat(self.feats, dim=0)
