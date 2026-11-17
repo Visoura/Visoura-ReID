@@ -50,9 +50,9 @@ SOLVER:
   IMS_PER_BATCH: 64
   WARMUP_METHOD: 'cosine'
   LARGE_FC_LR: False
-  CHECKPOINT_PERIOD: 120
+  CHECKPOINT_PERIOD: 20      # ViT-B on MSMT17 is close to Kaggle's 12h limit; keep checkpoints to test.py if killed
   LOG_PERIOD: 20
-  EVAL_PERIOD: 20
+  EVAL_PERIOD: 120         # eval only at the end: each MSMT17 eval is ~13 min with ViT-B
   WEIGHT_DECAY:  1e-4
   WEIGHT_DECAY_BIAS: 1e-4
   BIAS_LR_FACTOR: 2
